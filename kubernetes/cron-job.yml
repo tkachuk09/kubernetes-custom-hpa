@@ -1,0 +1,67 @@
+# Cronjob for scaling frontend deployment UP
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: <name>
+  namespace: <namespace>
+spec:
+  schedule: "0 * * * *" # Etc/UTC timezone
+  concurrencyPolicy: Replace
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 0
+  startingDeadlineSeconds: 3000
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: <name>
+            image: <dockerized python script>
+            command:
+            - sh
+            - '-c'
+            - >-
+              if python3 google-calendar.py | grep 'No events found.';
+              then echo 'No need to scale frontend replicas..'; else echo 'Scaling frontend replicas..'; \
+                   kubectl patch hpa <name> -n <namespace> --type='json' -p='[{"op": "replace", "path": "/spec/minReplicas", "value": 10}]'; \
+              fi
+          restartPolicy: Never
+          serviceAccountName: cron-autoscaling
+          nodeSelector:
+            nodegroup: <selector name>
+
+---
+# Cronjob for scaling frontend deployment DOWN
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: <name>
+  namespace: <namespace>
+spec:
+  schedule: "0 * * * *" # Etc/UTC timezone
+  concurrencyPolicy: Replace
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 0
+  startingDeadlineSeconds: 3000
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: <name>
+            image: <dockerized python script>
+            command:
+            - sh
+            - '-c'
+            - >-
+              if python3 google-calendar.py | grep 'No events found.';
+              then echo 'Scaling frontend replicas down..'; \
+                   kubectl patch hpa <name> -n <namespace> --type='json' -p='[{"op": "replace", "path": "/spec/minReplicas", "value": 2}]'; \
+                   else echo "It's event day, don't need to scale frontend replicas down"; \
+              fi
+          restartPolicy: Never
+          serviceAccountName: cron-autoscaling
+          nodeSelector:
+            nodegroup: <selector name>

@@ -1,0 +1,30 @@
+# RBAC for service account which used for autoscaling cronjob
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: <namespace>
+  name: autoscaling-cron
+rules:
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["patch", "get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: autoscaling-cron
+  namespace: <namespace>
+subjects:
+- kind: ServiceAccount
+  name: cron-autoscaling
+  namespace: <namespace>
+roleRef:
+  kind: Role
+  name: autoscaling-cron
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cron-autoscaling
+  namespace: <namespace>
